@@ -171,7 +171,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../cdecanvis.md" class="md-tabs__link">
+      <a href="../cdecanvis/" class="md-tabs__link">
         
   
     
@@ -257,7 +257,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cdecanvis.md" class="md-nav__link">
+      <a href="../cdecanvis/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1012,10 +1012,8 @@ WHERE value IN (
     SELECT u.api_key
     FROM api.users u 
     WHERE status = 0 
-      AND (
-          u.last_connector_import &lt; NOW() - INTERVAL 180 DAY 
-          OR u.last_connector_import IS NULL
-      )
+      AND u.last_connector_import &lt; NOW() - INTERVAL 180 DAY
+      AND u.last_connector_import IS NULL
 );
 
 DELETE FROM api.scheduled_queries sq
@@ -1023,10 +1021,8 @@ WHERE sq.user_id IN (
     SELECT u.id
     FROM api.users u 
     WHERE status = 0 
-      AND (
-          u.last_connector_import &lt; NOW() - INTERVAL 180 DAY 
-          OR u.last_connector_import IS NULL
-      )
+      AND u.last_connector_import &lt; NOW() - INTERVAL 180 DAY
+      AND u.last_connector_import IS NULL
 );
 
 DELETE FROM api.logs l
@@ -1034,18 +1030,338 @@ WHERE l.pharmacy_id IN (
     SELECT u.id
     FROM api.users u 
     WHERE status = 0 
-      AND (
-          u.created_at &lt; NOW() - INTERVAL 180 DAY 
-          OR u.last_connector_import IS NULL
-      )
+      AND u.created_at &lt; NOW() - INTERVAL 180 DAY
+      AND u.last_connector_import IS NULL
 );
 
 DELETE FROM api.users 
 WHERE status = 0 
-  AND (
-      created_at &lt; NOW() - INTERVAL 180 DAY 
-      OR last_connector_import IS NULL
-  );
+  AND created_at &lt; NOW() - INTERVAL 180 DAY 
+  AND last_connector_import IS NULL;
+
+</code></pre>
+<h2 id="api-connector">API connector</h2>
+<p>El connector comunica amb farmaoffice utilitzant api.farmaoffice.com</p>
+<p>Repositori API LUMEN</p>
+<h2 id="importacio-dades-elasticsearch-a-fo">Importació dades ElasticSearch a FO</h2>
+<p>Si volem executar una importació de forma manual (ES -&gt; FO)</p>
+<p>Entrem al servidor FO-01, i desde l’arrel del projecte (/var/www/farmaoffice.com) executem:</p>
+<p>Pel connector FARMATIC (antic)</p>
+<pre><code class="language-sh">php artisan import:clients
+</code></pre>
+<p>Pel connector FARMATIC (nou)</p>
+<pre><code class="language-sh">php artisan api:import [--pharmacy_id=NN]
+</code></pre>
+<p>ID Farmàcia: Segons la taula FARMAOFFICE.PHARMACY</p>
+<p>Pel connector IOFWIN</p>
+<pre><code class="language-sh">php artisan api:import-iofwin
+</code></pre>
+<p>Pel connector NIXFARMA</p>
+<pre><code class="language-sh">php artisan api:import-nixfarma
+</code></pre>
+<blockquote>
+<p>NOTA (2018-09-28): Si té multiempresa a NIXFARMA, cal marcar una d'elles com "default" a la taula SHOPS.</p>
+</blockquote>
+<p>Opcional: Després d’això cal actualitzar els comptadors dels grups:</p>
+<pre><code class="language-sh">php artisan listing:nusers
+</code></pre>
+<h3 id="importacio-de-dades-per-multiples-shopsgrups">Importació de dades per múltiples shops/grups</h3>
+<ol>
+<li>S'han d'afegir els següents settings a la BBDD de farmaoffice FO-01 a la farmàcia principal (default shop) per poder rebre les dades de les altres farmàcies (shops) i importar-les cap a la BBDD individual de la farmàcia. Exemple amb Dualfarma:  </li>
+<li><strong>settings.pharmacy.connector.serial.MD:</strong>  <ul>
+<li>El <code>.MD</code> identifica a la farmàcia no principal amb el <code>code</code> de la taula <code>shops</code> de la BBDD individual de la farmàcia principal.  </li>
+<li>Aquest setting conté la <code>api_key</code> del connector de la farmàcia no principal.  </li>
+<li>Es poden afegir tants com es necessitin segons nombre de farmàcies.  </li>
+<li>Aquí també posem la farmàcia principal amb el seu <code>code</code> corresponent.</li>
+</ul>
+</li>
+<li><strong>settings.pharmacy.has_shops:</strong>  <ul>
+<li>Determina que la farmàcia té varies <code>shops</code> associades.  </li>
+<li>Aquest setting es posa a la farmàcia principal.</li>
+</ul>
+</li>
+<li><strong>settings.pharmacy.main_shop:</strong>  <ul>
+<li>Determina que la farmàcia és la principal dins del grup de farmàcies en el moment de fer la importació de dades cap a FO.</li>
+</ul>
+</li>
+</ol>
+<p><img alt="alt text" src="../image-6.png" /></p>
+<p><strong>HISTORIAL DEL FITXER</strong></p>
+<p><em>S'ha produït un error en crear la miniatura: /bin/bash: line 1: /usr/bin/convert: No such file or directory Error code: 127</em></p>
+<p><img alt="alt text" src="../image-7.png" /></p>
+<p><strong>HISTORIAL DEL FITXER</strong></p>
+<p><em>S'ha produït un error en crear la miniatura: /bin/bash: line 1: /usr/bin/convert: No such file or directory Error code: 127</em></p>
+<ol>
+<li>S'han d'afegir els següents registres a la BBDD de la farmàcia principal per poder funcionar dins de la importació com a farmàcia principal:<ul>
+<li>Taula shops: Afegir cada farmàcia inclosa la principal amb el seu nom (camp lliure) i el code que s'utilitza per identificar a cada shop en els settings de les api_key a la BBDD farmaoffice de la farmacia principal. Aquí s'ha de posar el camp default a 1 a la farmàcia principal per identificar-la com principal (default shop).</li>
+</ul>
+</li>
+</ol>
+<p><img alt="alt text" src="../image-8.png" /></p>
+<p><strong>HISTORIAL DEL FITXER</strong></p>
+<p><em>S'ha produït un error en crear la miniatura: /bin/bash: line 1: /usr/bin/convert: No such file or directory Error code: 127</em></p>
+<h2 id="elasticsearch-i-kibana">ElasticSearch i Kibana</h2>
+<h3 id="configuracio-general">Configuració general</h3>
+<pre><code class="language-SH">- Kibana i ElasticSearch al servidor fo-02 de OVH (151.80.27.29)
+- Kibana http://172.16.0.2:5601 (accesible amb VPN)
+- Elastic http://172.16.0.2:9200
+</code></pre>
+<h3 id="paths-al-servidor-fo-02">Paths al servidor fo-02</h3>
+<pre><code class="language-sh">- /var/lib/elasticsearch (bins)
+- /var/log/elasticsearch (logs)
+- /etc/elasticsearch (configs)
+</code></pre>
+<h3 id="commands">Commands</h3>
+<pre><code class="language-SH">Test index status 
+curl -XGET &quot;http://172.16.0.2:9200&quot;
+</code></pre>
+<pre><code class="language-SH">Test service status
+systemctl status kibana
+systemctl status elasticsearch
+</code></pre>
+<pre><code class="language-SH">Start/stop service
+sudo systemctl start elasticsearch
+sudo systemctl stop elasticsearch
+sudo systemctl start kibana
+sudo systemctl stop kibana
+</code></pre>
+<pre><code class="language-SH">Check ports
+sudo netstat -tlpn
+</code></pre>
+<pre><code class="language-SH">Edit configs
+nano /etc/kibana/kibana.yml
+nano /etc/elasticsearch/elasticsearch.yml
+</code></pre>
+<h3 id="links">LINKS</h3>
+<ul>
+<li><a href="https://www.adictosaltrabajo.com/2015/12/27/introduccion-a-kibana/">Introducción a Kibana - Adictos al Trabajo</a></li>
+<li><a href="https://www.digitalocean.com/community/tutorials/how-to-use-kibana-dashboards-and-visualizations">How to Use Kibana Dashboards and Visualizations - DigitalOcean</a></li>
+</ul>
+<h2 id="installacio-manteniment-de-connectors">instal·lació / manteniment de connectors</h2>
+<p>En aquesta pàgina està tota la informació referent a la instal·lació / manteniment dels connectors, com també informació de com solucionar possibles incidències i errors.</p>
+<p><strong>Important: estem treballant en el servidor de la farmàcia, s'ha d'anar amb molta precaució amb el que es fa i també el mateix a la base de dades de api del servidor FO-01.</strong></p>
+<h3 id="installador">Instal·lador</h3>
+<ol>
+<li>Verificar a la taula <code>api.users</code> que l'índex del connector està creat correctament.</li>
+<li>En el servidor de la farmàcia, copiem l'arxiu de l'instal·lador a la carpeta de descàrregues: <a href="https://drive.google.com/file/d/19BwI8Eq3fTQs3eGVeXM2f_kPo5ET_fBf/view?usp=sharing">Descarregar instal·lador</a>.</li>
+<li>
+<p><strong>(NOMÉS GO)</strong> Mentre s'està pujant l'arxiu, s'ha d'activar el servei a través de la comanda:
+   <code>bash
+   php artisan pharmacy:create-connector-go</code>
+   ens demanarà el id de farmàcia i el tipus de conector.</p>
+</li>
+<li>
+<p>S'ha de posar el <code>settings.pharmacy.connector.farmaofficego</code> a <code>0</code> per evitar errors amb la importació dels connectors.</p>
+</li>
+<li>Executem l'instal·lador com a administrador i anem seguint els passos que ens mostra.</li>
+<li>En el pas d'introduir el número de sèrie (<code>api_key</code>), busquem a la taula <code>api.users</code> el camp <code>api_key</code> de l'índex amb el qual estem treballant. Molt important d'agafar la <code>api_key</code> correcte, ja que estem exportant dades REALS de la farmàcia cap a la nostra base de dades i no podem ajuntar dues bases de dades de farmàcies separades.</li>
+<li>Si és un connector <strong>Farmatic</strong>, ens demanarà les credencials per connectar-nos a la base de dades de Farmatic: El nom del servidor en el qual estem treballant.L'usuari sempre és <code>'sa'</code>. La contrasenya pot ser qualsevol que apareix a la base de dades de <code>api.users</code>. En cas de no trobar la contrasenya correcta, hem de trucar a la farmàcia perquè la introdueixin ells.</li>
+<li>Un cop introduïdes totes les dades, començarà la instal·lació del connector i el mateix instal·lador ens avisarà quan estigui completada.</li>
+</ol>
+<h3 id="configuracio-arxius-connector-xmi">Configuració arxius connector (XMI)</h3>
+<ol>
+<li>
+<p>Un cop realitzada la instal·lació, anem a <code>C:\Program files(x86)</code> i anem a propietats del directori <code>\XMI</code>. Desmarquem el check de l'atribut de <strong>només lectura</strong>. A l'apartat de <strong>seguretat</strong>, anem a <strong>afegir</strong> i afegim l'usuari <code>'tots'</code>. Apliquem els canvis i donem a <strong>acceptar</strong>.</p>
+</li>
+<li>
+<p>Entrem dins del directori de <code>\XMI</code> i apareixeran dos directoris i un arxiu executable. Hem d'esborrar aquest executable i afegir aquest: <a href="https://drive.google.com/file/d/1E1O0pFHb1zcwE6kDZpaHy1rGE-kcD3a1/view?usp=sharing">Descarregar executable</a>.</p>
+</li>
+<li>
+<p>Un cop substituït l'executable, anar al directori <code>\Api</code>.  </p>
+</li>
+<li>
+<p>En el directori <code>\bin</code> <strong>no s'ha de realitzar cap acció</strong>.</p>
+</li>
+<li>
+<p>Dins de <code>\Api</code>, anem primer al directori <code>\bin</code> i modifiquem l'arxiu <code>xmi.vbs</code>: Editem la ruta que apareix per <code>"C:\Program files(x86)\XMI\Api"</code>.</p>
+</li>
+<li>
+<p>A continuació, sortim de <code>\bin</code> i dins del directori de <code>\Api</code> accedim a la carpeta <code>\config</code>: Editem l'arxiu <code>settings.json</code> modificant el <strong>HTTPS</strong> de l'URL de <code>pro</code> per <strong>HTTP</strong>.</p>
+</li>
+</ol>
+<h3 id="iniciar-el-connector">Iniciar el connector</h3>
+<ol>
+<li>Fets els dos punts anteriors, ens quedem al directori de <code>\Api</code> i en la ruta de l'explorador d'arxius escrivim <code>cmd</code> per obrir el terminal des del mateix directori.</li>
+<li>
+<p>En el terminal introduïm la comanda:
+   node index.js
+per executar el connector. S'iniciarà el connector i es començarà actualitzar.</p>
+</li>
+<li>
+<p>Si estem instal·lant el connector per primera vegada i és del mòdul de compres (<strong>Eco-Buy, Hartmann i Pierre Fabre</strong>), hem de realitzar el pas <strong>Extreure la id_last_reception per connectors de mòdul de compres</strong>.</p>
+</li>
+<li>Un cop s'hagi actualitzat, el programa s'iniciarà i apareixerà la icona a la barra de tasques.  </li>
+<li>Fem clic dret sobre la icona i seleccionem <strong>Sortir</strong> per tancar el programa.</li>
+<li>S'ha de canviar el <code>value</code> del <code>settings.pharmacy.connector.farmaofficego</code> a <code>1</code> per poder fer l'exportació.</li>
+<li>
+<p>Tornem a executar el terminal des de l'explorador d'arxius i introduïm de nou la comanda:
+   <code>node index.js</code></p>
+</li>
+<li>
+<p>Un cop iniciat el connector, anem a la icona i fem clic dret i li donem a Exportar. Això iniciarà l'exportació de dades i en el terminal podrem veure els logs de l'exportació.</p>
+</li>
+<li>En els logs apareixerà un avís en el qual es mostrarà quan hagi acabat l'exportació i el connector s'apagarà automàticament tot seguit.</li>
+</ol>
+<h3 id="tasques-programades">Tasques programades</h3>
+<ol>
+<li>Ara ens toca crear la tasca programada de tancar el connector cada dia. Anem al <strong>programador de tasques</strong> i, un cop a dins, seleccionem <strong>"crear tasca bàsica"</strong>.</li>
+<li>
+<p>Al primer pas, li fiquem de nom <strong>"farmaoffice_close"</strong>. Al segon pas, deixem seleccionada l'opció de <strong>"diàriament"</strong>. Al tercer pas, modifiquem l'hora d'exportació i fiquem les <strong>9:45 del matí</strong>. Al quart pas, afegim en el programa <strong>"taskkill"</strong>, i en els arguments fiquem:
+     <code>bash
+     /F /IM node.exe</code>
+     Això finalitzarà el procés del node.
+    A continuació, es mostrarà el resum de la tasca i, si tot està correcte, la creem.</p>
+</li>
+<li>
+<p>Ara ja tenim les dues tasques programades:<br />
+La d'iniciar cada hora, que és <strong>"farmaoffice"</strong>.<br />
+La de tancar el connector, que és <strong>"farmaoffice_close"</strong>.
+ Provem que funcionen correctament executant-les respectivament.</p>
+</li>
+<li>
+<p>Si tot està correcte en el pas anterior, ja es trobarà realitzada la instal·lació. Només ens faltarà tancar les pàgines que haguem obert i ja podem avisar al client que el connector està instal·lat correctament.</p>
+</li>
+</ol>
+<h1 id="extreure-la-id_last_reception-per-connectors-de-modul-de-compres">Extreure la id_last_reception per connectors de mòdul de compres</h1>
+<ol>
+<li>Hem d'anar a la taula <code>api.scheduled_queries</code> i duplicar l'última fila de la taula afegint en el <code>user_id</code> el <code>id</code> del índex amb el qual estem treballant de la taula <code>api.users</code>, esborrem el camp <code>last_result</code> i fiquem el <code>status</code> a 0.</li>
+<li>Haurem d'esperar entre 10-15 minuts per obtenir el camp <code>last_result</code>.</li>
+<li>Un cop tenim el <code>last_result</code>, agafem el JSON que ens retorna i haurem d'agafar una <code>id_reception</code> d'un any enrere.</li>
+<li>Hem de ficar la <code>id_reception</code> al camp <code>api.id_last_reception</code>.</li>
+<li>Un cop fet aquest últim pas, ja podem continuar amb la resta del procés d'instal·lació.</li>
+</ol>
+<h1 id="connexions-amb-servidor-de-galicia">Connexions amb servidor de Galícia</h1>
+<p>Aquestes són les dades necessàries per fer la sol·licitud de connexió a servidors de Galícia per poder instal·lar/revisar connectors:</p>
+<ol>
+<li>
+<p><strong>Adreça departament Ereceita</strong> (encarregats de gestionar les connexions):  </p>
+<ul>
+<li><code>sys.ereceita@redfarma.org</code>  </li>
+<li><code>informatica@cofc.es</code> (posar en còpia).</li>
+</ul>
+</li>
+<li>
+<p><strong>Horari de connexions:</strong>  </p>
+<ul>
+<li>Les connexions es concediran entre les <strong>10:00 h</strong> fins a les <strong>14:00 h</strong>.</li>
+</ul>
+</li>
+<li>
+<p><strong>Antelació de la sol·licitud:</strong>  </p>
+<ul>
+<li>La sol·licitud s'ha de fer amb un mínim de <strong>24 h d'antelació</strong>.</li>
+</ul>
+</li>
+<li>
+<p><strong>Programa necessari per a la connexió:</strong>  </p>
+<ul>
+<li>La connexió només es pot fer a través d'<strong>ISL Light</strong>.  </li>
+<li><a href="https://www.islonline.com/es/es/downloads/">Enllaç per descarregar el programa</a> (ISL Light, no versió client).</li>
+</ul>
+</li>
+<li>
+<p><strong>Dades necessàries a incloure dins de la sol·licitud:</strong>  </p>
+<ul>
+<li>Nom de l'empresa que sol·licita la connexió (<strong>Farmaoffice SL</strong>).  </li>
+<li>Data en la qual es farà la connexió (sempre amb <strong>24 h d'antelació</strong>).  </li>
+<li>Nom o dades del titular o titulars de la farmàcia a la qual volem connectar-nos (també recomanat posar el nom d'empresa de la farmàcia).  </li>
+<li>Província a on es troba la farmàcia.</li>
+</ul>
+</li>
+</ol>
+<h1 id="problemes-i-incidencies">Problemes i incidències</h1>
+<ol>
+<li><strong>Hi ha un procés de node obert i fa que el nostre connector no funcioni.</strong>  </li>
+<li>
+<p>Tancar aquest procés i revisar que no afecti alguna altra aplicació.</p>
+</li>
+<li>
+<p><strong>Driver de la connexió ODBC no trobat.</strong>  </p>
+<ul>
+<li>Haurem de configurar la connexió ODBC, tota la informació sobre aquest tema es troba a la pàgina <strong>Connexions ODBC Iofwin</strong>.  </li>
+<li>Un cop configurada, ja podem tornar a executar el procés d'exportació.</li>
+</ul>
+</li>
+<li>
+<p><strong>Problemes amb les tasques programades.</strong><br />
+    Amb la tasca d'iniciar el connector, si no funciona, verificar que no s'ha modificat l'arxiu <code>\XMI\bin\xmi.vbs</code>.  </p>
+<ul>
+<li>Si s'ha modificat, s'ha de posar la ruta <code>"C:\Program files(x86)\XMI\Api"</code>.  </li>
+<li>Si continua fallant, instal·lar el connector de nou.  </li>
+<li>També es pot crear la tasca d'iniciar manualment, d'aquesta manera evitarem problemes amb els permisos d'usuari.
+Existeix la possibilitat de canviar el tipus d'execució que es fa en l'arxiu <code>\XMI\bin\xmi.vbs</code>, per executar directament amb el CMD de Windows.  </li>
+<li>Per això, haurem de modificar la condició del <code>else</code> per:
+   <code>vbscript
+   strCmd = "C:\windows\system32\cmd.exe /K node C:\Program Files (x86)\XMI\Api\index.js"
+   WshShell.Run(strCmd), 0</code></li>
+</ul>
+</li>
+<li>
+<p>Amb la tasca de tancar el connector, s'ha de revisar que estigui ben creada i que l'argument sigui el correcte.  </p>
+<ul>
+<li>Si no s'executa, activar el check d'executar amb els privilegis més alts.</li>
+</ul>
+</li>
+<li>
+<p><strong>La instal·lació dona problemes en el servidor o no es pot instal·lar en aquest.</strong>  </p>
+<ul>
+<li>Realitzar la instal·lació a un ordinador diferent del servidor el qual tingui connexió de xarxa amb el servidor.  </li>
+<li><strong>(Farmatic):</strong> En el procés de la instal·lació, en el pas de les credencials de la base de dades de Farmatic, ficar el nom del servidor.  </li>
+<li><strong>(IofWin i Nixfarma):</strong> Verificar que es troba configurada la connexió ODBC de 32 bit en el servidor per poder realitzar la connexió amb la base de dades del programa de gestió.</li>
+</ul>
+</li>
+<li>
+<p><strong>El connector s'inicia, però no exporta dades.</strong>  </p>
+<ul>
+<li>Veure a quina hora es posa en marxa el connector i fer una prova canviant el camp <code>api.export_hour</code> a 5 minuts després de l'inici.  </li>
+<li>Si exporta a l'hora indicada, canviar el <code>user_timetable</code> afegint l'hora indicada prèviament en el <code>export_hour</code>.</li>
+</ul>
+</li>
+<li>
+<p><strong>No es pot fer el primer <code>node index.js</code> (the edge module has not been pre-compiled for node.js version).</strong>  </p>
+<ul>
+<li>Haurem de desinstal·lar el node de l'ordinador de la farmàcia.  </li>
+<li>Després descarreguem l'instal·lador de la versió 4.4.7 del node:<br />
+<a href="https://nodejs.org/dist/v4.4.7/">Descarregar Node.js 4.4.7</a> -&gt; <code>node-v4.4.7-x64.msi</code>.  </li>
+<li>Ho posem a la carpeta de descàrregues de l'ordinador de la farmàcia i l'executem per fer la instal·lació.  </li>
+<li>Desinstal·lem i tornem a instal·lar el connector per si de cas.</li>
+</ul>
+</li>
+<li>
+<p><strong>Driver ODBC de 32 bit amb connexió externa al servidor.</strong>  </p>
+<ul>
+<li>Hem de configurar la ruta a l'arxiu de la base de dades de manera que connecti amb un servidor extern. Per exemple:<br />
+<code>10.1.37.11:/IOFWIN/DATOS/IOFWIN.FDB</code>.  </li>
+<li>S'ha d'especificar el client <code>GDS32.dll</code> per fer la connexió ODBC cap al servidor per poder llegir la base de dades. Exemple fotografia:</li>
+</ul>
+</li>
+</ol>
+<p><img alt="alt text" src="../image-9.png" /></p>
+<p># Sol·licitud d'accés a servidors de Galícia</p>
+<p>Passes per sol·licitar accés remot per realitzar la instal·lació de connectors a farmàcies de Galícia.
+Dades de contacte</p>
+<pre><code>Correu electrònic Redfarma (encarregats de la connexió): sys.ereceita@redfarma.org
+Telèfon del col·legi de farmacèutics de Pontevedra: 986 247 120
+Correu electrònic departament tècnic colegi Pontevedra: ti@cofpo.org
+</code></pre>
+<h3 id="plantilla-de-correu-per-enviar-a-redfarma">Plantilla de correu per enviar a Redfarma</h3>
+<pre><code class="language-sh">Buenas tardes,
+
+Soy &quot;nom_tècnic&quot; del equipo de Farmaoffice, empresa desarrolladora de software para farmacias.
+
+Nos ponemos en contacto con ustedes, porque necesitamos conectarnos de forma remota al servidor de la farmacia &quot;nom_farmàcia&quot; mediante el programa ISL ONLINE, para realizar la instalación de un programa en el servidor de la farmacia.
+
+Necesitaríamos conectarnos el próximo lunes día 18 de julio a partir de las 9 h de la mañana.
+
+Quedamos a la espera de su respuesta.
+
+Saludos cordiales,
+</code></pre>
+<p>En el correu ha de figurar el nóm de la farmàcia i la franja horaria en la que farem la conexió remota al servidor.</p>
+<p>Un cop es faci el tràmit de la sol·licitut, ens respondran des de Redfarma amb la franja seleccionada i l'usuari per accedir amb el ISL online. Aquest usuari només estarà disponible durant aquesta franja. </p>
+<h3 id="configuracio-connexio-isl-online">Configuració connexió ISL Online</h3>
+<pre><code class="language-sh">    Direcció IP Proxy: 213.60.205.145
+    Port Proxy: 7615
 
 </code></pre>
 
