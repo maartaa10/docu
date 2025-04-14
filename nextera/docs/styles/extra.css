@@ -1,0 +1,23 @@
+/* Asegura que los elementos de navegación se alineen en la barra superior */
+.md-tabs {
+  display: flex;
+  justify-content: flex-start; /* Alinea los elementos a la izquierda */
+  gap: 20px; /* Espaciado entre los ítems */
+}
+
+/* Ajusta los enlaces en la navbar */
+.md-tabs__link {
+  font-size: 16px;
+  color: white !important; /* Asegura que el texto sea visible en la barra azul */
+  text-decoration: none;
+  padding: 10px 15px;
+}
+
+/* Cambia el color de los enlaces al pasar el cursor */
+.md-tabs__link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+}
+.md-sidebar--secondary {
+  order: 0;
+}
